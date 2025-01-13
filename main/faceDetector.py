@@ -26,7 +26,7 @@ except (FileNotFoundError, ValueError) as e:
 
 # Read the input image with exception handling
 try:
-    image = cv2.imread('../resources/photos/Lenna_(test_image).png')
+    image = cv2.imread('../resources/photos/female.tiff') # Put Lenna_(test_image).png for Lenna image
     if image is None:
         raise ValueError("Image not found or unable to read.")
 except ValueError as e:
