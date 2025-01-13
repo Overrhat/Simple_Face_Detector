@@ -1,17 +1,39 @@
 import cv2
 import time
+import os
 
 # Start time
 start_time = time.time()
 
-# Load the cascade for face, eyes, and mouth detection
-face_cascade = cv2.CascadeClassifier('../resources/xml_files/haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier('../resources/xml_files/haarcascade_eye.xml')
-mouth_cascade = cv2.CascadeClassifier('../resources/xml_files/haarcascade_mcs_mouth.xml')
-nose_cascade = cv2.CascadeClassifier('../resources/xml_files/haarcascade_mcs_nose.xml')
+# Function to load cascade classifiers with exception handling
+def load_cascade_classifier(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"XML file not found: {file_path}")
+    cascade = cv2.CascadeClassifier(file_path)
+    if cascade.empty():
+        raise ValueError(f"Failed to load cascade classifier from: {file_path}")
+    return cascade
 
-# Read the input image
-image = cv2.imread('../resources/photos/Lenna_(test_image).png')
+# Load the cascade for face, eyes, mouth, and nose detection
+try:
+    face_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_frontalface_default.xml')
+    eye_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_eye.xml')
+    mouth_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_mouth.xml')
+    nose_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_nose.xml')
+except (FileNotFoundError, ValueError) as e:
+    print(e)
+    exit(1)
+
+# Read the input image with exception handling
+try:
+    image = cv2.imread('../resources/photos/Lenna_(test_image).png')
+    if image is None:
+        raise ValueError("Image not found or unable to read.")
+except ValueError as e:
+    print(e)
+    exit(1)
+
+# Convert image to grayscale
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 # Detect faces in the image
@@ -37,7 +59,7 @@ for (fx, fy, fw, fh) in faces:
 
     # Detect nose within the ROI
     noses = nose_cascade.detectMultiScale(roi_gray, 1.3, 5)
-    # Draw rectangles around the mouths
+    # Draw rectangles around the noses
     for (nx, ny, nw, nh) in noses:
         cv2.rectangle(roi_color, (nx, ny), (nx + nw, ny + nh), (255, 0, 0), 2)  # Blue rectangle
 
