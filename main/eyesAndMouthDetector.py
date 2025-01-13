@@ -35,3 +35,5 @@ print(f"Time taken: {end_time - start_time} seconds")
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+
+print("Windows closed successfully!")
