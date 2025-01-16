@@ -2,9 +2,6 @@ import cv2
 import time
 import os
 
-# Start time
-start_time = time.time()
-
 # Function to load cascade classifiers with exception handling
 def load_cascade_classifier(file_path):
     if not os.path.exists(file_path):
@@ -24,14 +21,30 @@ except (FileNotFoundError, ValueError) as e:
     print(e)
     exit(1)
 
-# Read the input image with exception handling
-try:
-    image = cv2.imread('../resources/photos/female.tiff') # Put Lenna_(test_image).png for Lenna image
-    if image is None:
-        raise ValueError("Image not found or unable to read.")
-except ValueError as e:
-    print(e)
-    exit(1)
+# Function to prompt user until a valid image is provided or 'exit' is entered
+def get_valid_image():
+    while True:
+        image_name = input("Please provide the name of an image: ")
+
+        if image_name.lower() == "exit":
+            print("Exiting the program...")
+            exit(0)
+
+        # Prepend the folder path
+        full_path = f"../resources/photos/{image_name}"
+
+        # Attempt to read the image
+        image = cv2.imread(full_path)
+        if image is not None:
+            return image
+        else:
+            print("Invalid image!")
+
+# Get valid image from the user
+image = get_valid_image()
+
+# Start timer after valid input is received
+start_time = time.time()
 
 # Convert image to grayscale
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -66,7 +79,7 @@ for (fx, fy, fw, fh) in faces:
 # Display the output
 cv2.imshow('Face Detection Highlighted', image)
 
-# End time
+# End timer when the image is displayed
 end_time = time.time()
 
 # Print the time taken
