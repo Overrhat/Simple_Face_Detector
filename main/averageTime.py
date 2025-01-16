@@ -24,7 +24,7 @@ def run_face_detection():
 
     # Read the input image
     try:
-        image = cv2.imread('../resources/photos/Lenna_(test_image).png')
+        image = cv2.imread('../resources/photos/lenna.png')
         if image is None:
             raise ValueError("Image not found or unable to read.")
     except ValueError as e:

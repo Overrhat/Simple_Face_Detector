@@ -1,14 +1,16 @@
 import cv2
 import time
 
-# Start time
-start_time = time.time()
-
 # Load the cascade for nose detection
 nose_cascade = cv2.CascadeClassifier('../resources/xml_files/haarcascade_mcs_nose.xml')
 
 # Read the input image
 image = cv2.imread('../resources/photos/profile_photo.jpg')
+
+# Start time
+start_time = time.time()
+
+# Convert image to grayscale
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 # Detect noses in the image
