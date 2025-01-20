@@ -46,7 +46,7 @@ def limit_detections(detected_objects, max_allowed):
         return sorted(detected_objects, key=lambda obj: obj[2] * obj[3], reverse=True)[:max_allowed]
     return detected_objects
 
-# Load classifiers
+# Load classifiers from XML files. Reference: https://github.com/opencv/opencv/tree/master/data/haarcascades
 try:
     face_classifier = load_classifier('../resources/xml_files/haarcascade_frontalface_default.xml')
     eye_classifier = load_classifier('../resources/xml_files/haarcascade_eye.xml')
