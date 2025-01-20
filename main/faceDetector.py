@@ -64,7 +64,7 @@ start_time = time.time()
 preprocessed = preprocess_image(image)
 
 # Detect faces with more relaxed parameters
-faces = detect_feature(face_cascade, preprocessed, scale_factor=1.05, min_neighbors=6)
+faces = detect_feature(face_cascade, preprocessed, scale_factor=1.1, min_neighbors=7)
 
 # Process each face
 for (fx, fy, fw, fh) in faces:
@@ -74,8 +74,8 @@ for (fx, fy, fw, fh) in faces:
     # Use multi-threading for feature detection
     with concurrent.futures.ThreadPoolExecutor() as executor:
         eye_future = executor.submit(detect_feature, eye_cascade, face_roi[int(fh*0.1):int(fh*0.6), :], 1.05, 6)
-        mouth_future = executor.submit(detect_feature, mouth_cascade, face_roi[int(fh*0.5):, :], 1.1, 20)
-        nose_future = executor.submit(detect_feature, nose_cascade, face_roi[int(fh*0.2):int(fh*0.8), :], 1.05, 4)
+        mouth_future = executor.submit(detect_feature, mouth_cascade, face_roi[int(fh*0.5):, :], 1.07, 20)
+        nose_future = executor.submit(detect_feature, nose_cascade, face_roi[int(fh*0.2):int(fh*0.8), :], 1.2, 7)
 
         eyes = eye_future.result()
         mouths = mouth_future.result()
