@@ -1,8 +1,8 @@
 import cv2
 import time
 import os
+import concurrent.futures
 
-# Function to load cascade classifiers with exception handling
 def load_cascade_classifier(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"XML file not found: {file_path}")
@@ -11,69 +11,27 @@ def load_cascade_classifier(file_path):
         raise ValueError(f"Failed to load cascade classifier from: {file_path}")
     return cascade
 
-# Load the cascade for face, eyes, mouth, and nose detection
-try:
-    face_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_frontalface_default.xml')
-    eye_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_eye.xml')
-    mouth_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_mouth.xml')
-    nose_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_nose.xml')
-except (FileNotFoundError, ValueError) as e:
-    print(e)
-    exit(1)
+def preprocess_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    equalized = cv2.equalizeHist(gray)
+    return equalized
 
-# Function to prompt user until a valid image is provided or 'exit' is entered
+def detect_feature(cascade, roi, scale_factor, min_neighbors, min_size=(30, 30)):
+    return cascade.detectMultiScale(roi, scaleFactor=scale_factor, minNeighbors=min_neighbors, minSize=min_size)
+
 def get_valid_image():
     while True:
         image_name = input("Please provide the name of an image in resources (type exit to quit): ")
-
         if image_name.lower() == "exit":
             print("Closing the program...")
             exit(0)
-
-        # Prepend the folder path
         full_path = f"../resources/photos/{image_name}"
-
-        # Attempt to read the image
         image = cv2.imread(full_path)
         if image is not None:
             return image
         else:
             print("Invalid image! Try again!")
 
-# Get valid image from the user
-image = get_valid_image()
-
-# Start timer after valid input is received
-start_time = time.time()
-
-# Convert image to grayscale
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# Detect faces in the image
-faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-# Loop over each detected face
-for (fx, fy, fw, fh) in faces:
-    # Define the region of interest (ROI) for eyes and mouth within the detected face
-    roi_gray = gray[fy:fy+fh, fx:fx+fw]
-    roi_color = image[fy:fy+fh, fx:fx+fw]
-
-    eyes = eye_cascade.detectMultiScale(roi_gray, 1.3, 5)
-    for (ex, ey, ew, eh) in eyes:
-        cv2.rectangle(roi_color, (ex, ey), (ex + ew, ey + eh), (0, 255, 0), 2)  # Green rectangle
-
-    mouths = mouth_cascade.detectMultiScale(roi_gray, 1.3, 5)
-    for (mx, my, mw, mh) in mouths:
-        cv2.rectangle(roi_color, (mx, my), (mx + mw, my + mh), (0, 0, 255), 2)  # Red rectangle
-
-    noses = nose_cascade.detectMultiScale(roi_gray, 1.3, 5)
-    for (nx, ny, nw, nh) in noses:
-        cv2.rectangle(roi_color, (nx, ny), (nx + nw, ny + nh), (255, 0, 0), 2)  # Blue rectangle
-
-# Create a copy of the processed image for display
-display_image = image.copy()
-
-# Resize the display image
 def resize_for_display(image, max_width=1024, max_height=768):
     height, width = image.shape[:2]
     if width > max_width or height > max_height:
@@ -83,21 +41,70 @@ def resize_for_display(image, max_width=1024, max_height=768):
         return cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
     return image
 
-display_image = resize_for_display(display_image)
+def filter_detections(detections, max_detections):
+    if len(detections) > max_detections:
+        return sorted(detections, key=lambda d: d[2] * d[3], reverse=True)[:max_detections]
+    return detections
 
-# Display the output
+# Load cascades
+try:
+    face_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_frontalface_default.xml')
+    eye_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_eye.xml')
+    mouth_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_mouth.xml')
+    nose_cascade = load_cascade_classifier('../resources/xml_files/haarcascade_mcs_nose.xml')
+except (FileNotFoundError, ValueError) as e:
+    print(e)
+    exit(1)
+
+# Get valid image and start timer
+image = get_valid_image()
+start_time = time.time()
+
+# Preprocess image
+preprocessed = preprocess_image(image)
+
+# Detect faces with more relaxed parameters
+faces = detect_feature(face_cascade, preprocessed, scale_factor=1.05, min_neighbors=6)
+
+# Process each face
+for (fx, fy, fw, fh) in faces:
+    face_roi = preprocessed[fy:fy+fh, fx:fx+fw]
+    roi_color = image[fy:fy+fh, fx:fx+fw]
+
+    # Use multi-threading for feature detection
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        eye_future = executor.submit(detect_feature, eye_cascade, face_roi[int(fh*0.1):int(fh*0.6), :], 1.05, 6)
+        mouth_future = executor.submit(detect_feature, mouth_cascade, face_roi[int(fh*0.5):, :], 1.1, 20)
+        nose_future = executor.submit(detect_feature, nose_cascade, face_roi[int(fh*0.2):int(fh*0.8), :], 1.05, 4)
+
+        eyes = eye_future.result()
+        mouths = mouth_future.result()
+        noses = nose_future.result()
+
+    # Filter detections
+    eyes = filter_detections(eyes, 2)
+    mouths = filter_detections(mouths, 1)
+    noses = filter_detections(noses, 1)
+
+    # Draw rectangles
+    for (ex, ey, ew, eh) in eyes:
+        cv2.rectangle(roi_color, (ex, ey+int(fh*0.1)), (ex + ew, ey + eh+int(fh*0.1)), (0, 255, 0), 2)
+
+    for (mx, my, mw, mh) in mouths:
+        cv2.rectangle(roi_color, (mx, my+int(fh*0.5)), (mx + mw, my + mh+int(fh*0.5)), (0, 0, 255), 2)
+
+    for (nx, ny, nw, nh) in noses:
+        cv2.rectangle(roi_color, (nx, ny+int(fh*0.2)), (nx + nw, ny + nh+int(fh*0.2)), (255, 0, 0), 2)
+
+# Resize and display
+display_image = resize_for_display(image)
 cv2.imshow('Face Detection Highlighted', display_image)
-
-# End timer when the image is displayed
-end_time = time.time()
-
-# Set the window to be always on top
 cv2.setWindowProperty('Face Detection Highlighted', cv2.WND_PROP_TOPMOST, 1)
 
-# Print the time taken
+# End timer and print time taken
+end_time = time.time()
 print(f"Time taken: {end_time - start_time} seconds")
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
 print("Windows closed successfully!")
