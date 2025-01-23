@@ -3,6 +3,12 @@ import time
 import os
 import concurrent.futures
 
+"""
+This program detects facial features (eyes, mouth, and nose) in an image using Haar cascades.
+    Mac/Linux: python3 faceDetector.py
+    Windows: python faceDetector.py
+"""
+
 def load_classifier(xml_file_path):
     if not os.path.exists(xml_file_path):
         raise FileNotFoundError(f"XML file not found: {xml_file_path}")
